@@ -62,10 +62,78 @@ void SystemClock_Config(void);
   */
 int main(void)
 {
+RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+	RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+	RCC->APB2ENR  |= RCC_APB2ENR_ADCEN;
+	RCC->APB1ENR  |= RCC_APB1ENR_DACEN;
+  SystemClock_Config();
+	
+	
+	// Configure the leds
+	GPIOC->MODER |= (1<<12) | (1<<14) | (1<<16) | (1<<18);
+	GPIOC->MODER &= ~((1<<13) | (1<<15) | (1<<17) | (1<<19));
+	GPIOC->OTYPER &= ~((1<<6) | (1<<7) | (1<<8) | (1<<9));
+	GPIOC->OSPEEDR &= ~((1<<12) | (1<<14) | (1<<16) | (1<<18));
+	GPIOC->PUPDR &= ~((1<<12) | (1<<14) | (1<<16) | (1<<18)
+									| (1<<13) | (1<<15) | (1<<17) | (1<<19));
+	GPIOC->OSPEEDR &= ~((1<<0) | (1<<1));
 
- 
+	GPIOC->ODR &= ~((1<<6) | (1<<7) | (1<<8) | (1<<9));
+	
+	// Configure PC0 with ADC_IN10
+	GPIOC->MODER |= (1<<1) | (1<<0);
+	GPIOC->PUPDR &= ~((1<<1) | (1<<0));
+	
+	ADC1->CFGR1 |= (1<<4);
+	ADC1->CFGR1 &= ~(1<<3); //8-bit resolution
+	ADC1->CFGR1 |= (1<<13); //continuous conversion mode
+	ADC1->CFGR1 &= ~((1<<11) | (1<<10)); //hardware trigger disabled
+	
+	ADC1->CHSELR |= (1<<10); // Select channel 10
+	
+	//ADC1->CR &= ~(1<<0); //ADEN = 0
+	//ADC1->CFGR1 &= ~(1<<0); //DMAEN = 0
+	ADC1->CR |= (1<<31); //ADCAL = 1
+	
+	while ((ADC1->CR & (1<<31))){}
+	
+	//ADC1->ISR &= ~(1<<0); //ADRDY = 0
+	ADC1->CR |= (1<<0); //ADEN = 1
+	
+	while (!(ADC1->ISR & (1<<0))){}
+	ADC1->CR |= (1<<2); //start
+
+
+ int voltage;
+		
 	while(1)
   {
+		
+		voltage = ADC1->DR;
+		if(voltage < 50)
+		{
+			GPIOC->ODR &= ~((1<<6) | (1<<7) | (1<<8) | (1<<9));
+		}
+		else if(voltage < 100)
+		{
+			GPIOC->ODR &= ~((1<<7) | (1<<8) | (1<<9));
+			GPIOC->ODR |= (1<<6);
+		}
+		else if(voltage < 150)
+		{
+			GPIOC->ODR &= ~((1<<7) | (1<<9));
+			GPIOC->ODR |= (1<<6) | (1<<8);
+		}
+		else if(voltage < 210)
+		{
+			GPIOC->ODR &= ~((1<<9));
+			GPIOC->ODR |= (1<<6) | (1<<7) | (1<<8);
+		}
+		else
+		{
+			GPIOC->ODR |= (1<<6) | (1<<7) | (1<<8) | (1<<9);
+		}
+
 		
 		
 		
