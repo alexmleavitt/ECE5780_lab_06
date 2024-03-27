@@ -62,7 +62,7 @@ void SystemClock_Config(void);
   */
 int main(void)
 {
-RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+ RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
 	RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
 	RCC->APB2ENR  |= RCC_APB2ENR_ADCEN;
 	RCC->APB1ENR  |= RCC_APB1ENR_DACEN;
@@ -102,10 +102,23 @@ RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
 	
 	while (!(ADC1->ISR & (1<<0))){}
 	ADC1->CR |= (1<<2); //start
-
-
- int voltage;
 		
+	//PA4 is DAC_OUT1
+	GPIOA->MODER |= (1<<8) | (1<<9);
+	GPIOA->PUPDR &= ~((1<<8) | (1<<9));
+		
+	DAC1->CR |= (7<<3);	
+	DAC1->SWTRIGR |= (1<<0); // software trigger DAC channel 1
+	DAC1->CR |= (1<<0); //enable DAC channel 1
+	
+	
+	
+  int voltage;
+		
+	// Triangle Wave: 8-bit, 32 samples/cycle
+	const uint8_t triangle_table[32] = {0,15,31,47,63,79,95,111,127,142,158,174,
+	190,206,222,238,254,238,222,206,190,174,158,142,127,111,95,79,63,47,31,15};
+ 
 	while(1)
   {
 		
@@ -133,11 +146,13 @@ RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
 		{
 			GPIOC->ODR |= (1<<6) | (1<<7) | (1<<8) | (1<<9);
 		}
-
 		
 		
-		
-		
+		for(int i = 0; i<32; i++)
+		{
+			DAC1->DHR8R1 = triangle_table[i];
+			HAL_Delay(1);
+		}
   }
   /* USER CODE END 3 */
 }
